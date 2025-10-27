@@ -7,13 +7,17 @@ This repository now ships two deliverables for RedM server owners:
 
 ## Resource Overview
 
-The `resource/` directory is a standalone RedM resource that can be dropped into your `resources` folder. It focuses on three critical foundations requested by the design brief:
+The `resource/` directory is a standalone RedM resource that now orchestrates the full “Omni Frontier” sandbox. Drop it into your `resources` folder to gain:
 
-- **Administrative Controls** — commands for creating, deleting, and transferring ranch deeds by player identifier (license, CID, Discord). Discord role IDs can be attached per ranch to support out-of-band automation.
-- **Zoning & Vegetation Toolkit** — an in-game zone creator (compatible with PZCreate-style workflows) that stores polygon points, applies vegetation modifiers, and broadcasts data to connected clients.
-- **Mapper Prop Prompts** — whitelisted prop placement utilities so staff can spawn usable ranch props and persist them per ranch without restarting the server.
+- **Administrative Mastery** — deed creation, deletion, merging, and ownership transfers keyed to license, CID/CitizenID, Discord ID, or online source. Discord role hooks, ledger adjustments, and audit history are applied automatically.
+- **World Simulation** — dynamic season cycling, weather rolls, hazard queues, and vegetation modifiers powered by the new `server/environment.lua` controller. Hazards broadcast in real time to ranch history logs and client HUD notifications.
+- **Livestock Lifecycle** — persistent animal registries with trust meters, need decay, breeding timers, and treatment logs per ranch (`server/livestock.lua`).
+- **Workforce & Tasks** — rosters, morale/fatigue tracking, and configurable task boards for AI or player ranch hands (`server/workforce.lua`).
+- **Economy & Contracts** — seasonal price curves, contract generators, auction scaffolding, and ledger hooks for every sale or bounty (`server/economy.lua`).
+- **Progression & Legacy** — XP gain, level thresholds, skill unlocks, and achievement tracking tied directly to ranch history (`server/progression.lua`).
+- **Zoning, Vegetation & Mapping Utilities** — upgraded zone capture, vegetation payloads, and mapper prop placement with rotation/elevation controls.
 
-These systems persist to JSON by default, include Discord webhook hooks for ownership events, and expose client exports for future modules (livestock, jobs, etc.).
+All subsystems persist to JSON out of the box while sharing unified config tables so server owners can retune balance without editing code. Every state change emits events to clients and Discord-ready webhooks for automation.
 
 ## Installation
 
@@ -27,37 +31,57 @@ These systems persist to JSON by default, include Discord webhook hooks for owne
 
 ## Configuration Highlights (`resource/shared/config.lua`)
 
-- `Config.Admin` — ACE permission and identifier whitelist.
-- `Config.IdentifierPriority` — order in which identifiers are resolved when admins omit arguments.
-- `Config.Discord` — webhook URL and role prefix fields to power ownership notifications.
-- `Config.Zoning` — command names and default vegetation state for the PZCreate toolchain.
-- `Config.Props` — whitelisted prop models available to mappers.
-- `Config.Storage` — JSON files for ranch deeds and vegetation; replace with database logic as needed.
+The config has been expanded into an “omni-level” tuning surface touching every feature described in the PRD. Highlights include:
+
+- `Config.Admin`, `Config.IdentifierPriority`, `Config.Discord` — access control, identifier parsing, Discord role/webhook automation, and audit logging.
+- `Config.Storage.Files` — declarative map of every JSON persistence bucket (ranches, vegetation, animals, workforce, production, environment, economy, progression) with an auto-persist interval.
+- `Config.Ranches` — ranch limits, upgrade trees, decoration catalogs, maintenance costs, morale math, ledger defaults, and Discord role wage modifiers.
+- `Config.Environment` — season order/length, weather weights, hazard definitions, wildlife behaviors, soil fertility math, drought/flood modifiers, and ambient audio tracks.
+- `Config.Livestock` / `Config.Healthcare` — species stats, genetics tables, trust thresholds, breeding rules, disease/injury catalogs, and farrier tooling.
+- `Config.Workforce` — AI hand options, wage tables, accident odds, task definitions, morale/fatigue decay, and roster permissions.
+- `Config.ProductionChains`, `Config.Crops`, `Config.Economy` — end-to-end processing times, spoilage rates, storage capacities, dynamic pricing curves, contract boards, and auction controls.
+- `Config.Progression`, `Config.UI`, `Config.GodExtras` — XP thresholds, skill trees, achievement rewards, tutorial toggles, haunted/VR/Tebex extras, and voice command flags.
+
+Every section is documented with sensible defaults so you can rescale difficulty, monetization hooks, or thematic flavor from a single file.
 
 ## Admin Commands
 
+All commands require the `ranch.admin` ACE or a whitelisted identifier and respect the config-driven rate limiter/audit log.
+
 | Command | Description |
 | --- | --- |
-| `/ranchcreate <name> [identifier]` | Create a ranch deed owned by the provided identifier (license:, cid:, discord:). |
-| `/ranchdelete <ranchId>` | Remove the ranch and purge stored data. |
-| `/ranchtransfer <ranchId> <identifier>` | Transfer ownership to another player identifier. |
-| `/ranchsetrole <ranchId> <discordRoleId>` | Associate a Discord role ID with the ranch (for external bots or Tebex perks). |
-| `/pzcreate [zoneId]` | Begin drawing a polygon zone using Left Alt (point), Enter (save), Backspace (cancel). |
+| `/ranchcreate <name> [identifier]` | Create a deed with optional owner identifier (license:/cid:/citizenid:/discord:). |
+| `/ranchdelete <ranchId>` | Delete a ranch, remove zones/props, archive Discord roles if configured. |
+| `/ranchtransfer <ranchId> <identifier>` | Transfer ownership to another identifier; triggers Discord webhook + ledger history. |
+| `/ranchsetrole <ranchId> <discordRoleId>` | Attach a Discord role for external automation or Tebex perks. |
+| `/ranchseason <season>` | Force the global season (`spring`, `summer`, `autumn`, `winter`). |
+| `/ranchweather` | Roll a new weather pattern immediately. |
+| `/ranchhazard <hazardKey> [ranchId]` | Queue a hazard (lightning, flood, drought, blizzard, duststorm, etc.) optionally tied to a ranch history entry. |
+| `/ranchanimaladd <ranchId> <species> [count]` | Spawn and persist livestock for the ranch with full needs/genetics records. |
+| `/ranchanimaldel <ranchId> <animalId>` | Remove a specific animal from the ranch herd. |
+| `/ranchassign <ranchId> <identifier> <role>` | Assign a workforce role (Owner, Foreman, Hand, Wrangler, Dairyman, Butcher, Vet, Teamster). |
+| `/ranchtask <ranchId> <taskType>` | Post a configurable task board job (feeding, watering, mucking, milking, fenceRepair, herding). |
+| `/ranchcontract [town] [contractId] [ranchId]` | Without args generate a new contract, or assign an existing contract to a ranch. |
+| `/ranchxp <ranchId> <amount>` | Grant XP toward ranch level/skill unlocks. |
+| `/pzcreate [zoneId]` | Begin drawing a polygon zone with Left Alt (point), Enter (save), Backspace (cancel). |
 | `/pzsave` | Force-save the current zone in progress. |
 | `/pzcancel` | Abort the current zone creation session. |
-| `/ranchprop <model> [ranchId]` | Spawn a whitelisted prop for the ranch (defaults to global placement). |
+| `/ranchprop <model> [ranchId]` | Spawn a whitelisted prop with rotation/elevation controls. |
 | `/ranchpropdel [ranchId]` | Remove all stored props for the ranch. |
 
-All commands are admin-gated via ACE permissions or identifier whitelist.
+Every command emits chat feedback plus server history entries so ownership, workforce, and economic changes remain auditable.
 
 ## Data Events & Integrations
 
-- `ranch:zones:sync` / `ranch:zones:updated` — broadcast when parcels change.
-- `ranch:vegetation:update` / `ranch:vegetation:bulk` — per-zone vegetation modifiers pushed to clients.
-- `ranch:props:update` — mapper prop payload for clients.
-- `ranch:ownershipChanged` (server event) — emitted after transfers to trigger Discord webhooks or other automation.
+- `ranch:zones:sync`, `ranch:vegetation:update`, `ranch:props:update` — authoritative land, vegetation, and prop payloads.
+- `ranch:environment:update`, `ranch:environment:notify` — global season/weather/hazard state and alert messages.
+- `ranch:livestock:update`, `ranch:livestock:trust`, `ranch:livestock:treated` — herd snapshots, trust deltas, and treatment logs.
+- `ranch:workforce:roster`, `ranch:workforce:tasks` — roster morale/fatigue data and active task boards.
+- `ranch:economy:update`, `ranch:economy:contracts`, `ranch:economy:sale` — price tables, contract boards, and ledger sale broadcasts.
+- `ranch:progression:update`, `ranch:progression:achievement` — XP/level updates and achievement unlocks.
+- `ranch:ownershipChanged` (server) — emitted after deed transfers for Discord role bots or Tebex fulfillment.
 
-Client exports (`GetRanchZones`, `GetVegetation`, `GetProps`) allow future systems to consume authoritative data (e.g., livestock AI, soil simulation, predator spawn logic).
+Client exports now expose `GetRanchZones`, `GetVegetation`, `GetProps`, `GetEnvironment`, `GetLivestock`, `GetWorkforce`, `GetEconomy`, and `GetProgression` so UI layers, AI systems, or external scripts can access synced state.
 
 ## Extending the Resource
 

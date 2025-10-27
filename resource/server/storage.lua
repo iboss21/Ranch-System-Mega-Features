@@ -19,10 +19,10 @@ local function saveJson(path, payload)
     SaveResourceFile(GetCurrentResourceName(), path, json.encode(payload, { indent = true }), -1)
 end
 
-function Storage.new(path)
+function Storage.new(path, defaults)
     local self = setmetatable({}, Storage)
     self.path = path
-    self.cache = loadJson(path, {})
+    self.cache = loadJson(path, Utils.DeepCopy(defaults))
     return self
 end
 
@@ -51,11 +51,29 @@ function Storage:All()
     return self.cache
 end
 
-local RanchStorage = Storage.new(Config.Storage.RanchFile)
-local VegetationStorage = Storage.new(Config.Storage.VegetationFile)
+local stores = {}
+for name, path in pairs(Config.Storage.Files) do
+    stores[name] = Storage.new(path)
+end
 
-return {
-    Storage = Storage,
-    Ranches = RanchStorage,
-    Vegetation = VegetationStorage
-}
+if Config.Storage.AutoPersistInterval and Config.Storage.AutoPersistInterval > 0 then
+    CreateThread(function()
+        while true do
+            Wait(Config.Storage.AutoPersistInterval * 1000)
+            for _, store in pairs(stores) do
+                store:Persist()
+            end
+        end
+    end)
+end
+
+local api = { Storage = Storage }
+for name, store in pairs(stores) do
+    api[name] = store
+end
+
+function api.GetStore(name)
+    return stores[name]
+end
+
+return api
