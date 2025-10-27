@@ -35,7 +35,10 @@ local function saveZone()
         points = zonePoints,
         vegetation = Config.ZoneDefaults.VegetationState,
         wildlife = Config.ZoneDefaults.WildlifeDensity,
-        fertility = Config.ZoneDefaults.SoilFertility
+        fertility = Config.ZoneDefaults.SoilFertility,
+        irrigation = Config.ZoneDefaults.IrrigationLevel,
+        pest = Config.ZoneDefaults.PestPressure,
+        rotation = Config.ZoneDefaults.GrazingRotationDays
     })
     notify("Zone saved: " .. zoneId)
     reset()
