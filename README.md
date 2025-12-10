@@ -1,215 +1,545 @@
-# Ranch System: Omni Frontier
+# 🏇 Ranch System: Omni Frontier
 
-This repository now ships two deliverables for RedM server owners:
+> **A Supreme-Level Ranch Management System for RedM**  
+> Transform your RedM server into a living, breathing frontier ranch simulation with deep livestock management, dynamic seasons, workforce systems, and immersive UI.
 
-1. **Omni Frontier Resource (`resource/`)** — a production-ready RedM script scaffold that provides ranch deed administration, zoning & vegetation editing, and mapper prop tooling with Discord webhook placeholders.
-2. **Product Requirements Document (PRD)** — a long-form blueprint that covers the complete ranch-management vision. Use it to guide future milestones layered on top of the core resource.
-
-## Resource Overview
-
-The `resource/` directory is a standalone RedM resource that now orchestrates the full “Omni Frontier” sandbox. Drop it into your `resources` folder to gain:
-
-- **Administrative Mastery** — deed creation, deletion, merging, and ownership transfers keyed to license, CID/CitizenID, Discord ID, or online source. Discord role hooks, ledger adjustments, and audit history are applied automatically.
-- **World Simulation** — dynamic season cycling, weather rolls, hazard queues, and vegetation modifiers powered by the new `server/environment.lua` controller. Hazards broadcast in real time to ranch history logs and client HUD notifications.
-- **Livestock Lifecycle** — persistent animal registries with trust meters, need decay, breeding timers, and treatment logs per ranch (`server/livestock.lua`).
-- **Workforce & Tasks** — rosters, morale/fatigue tracking, and configurable task boards for AI or player ranch hands (`server/workforce.lua`).
-- **Economy & Contracts** — seasonal price curves, contract generators, auction scaffolding, and ledger hooks for every sale or bounty (`server/economy.lua`).
-- **Progression & Legacy** — XP gain, level thresholds, skill unlocks, and achievement tracking tied directly to ranch history (`server/progression.lua`).
-- **Zoning, Vegetation & Mapping Utilities** — upgraded zone capture, vegetation payloads, and mapper prop placement with rotation/elevation controls.
-
-All subsystems persist to JSON out of the box while sharing unified config tables so server owners can retune balance without editing code. Every state change emits events to clients and Discord-ready webhooks for automation.
-
-## Installation
-
-1. Copy the `resource` folder to your server and rename it (e.g., `omni_ranch`).
-2. Add the resource to your server `resources.cfg`:
-   ```cfg
-   ensure omni_ranch
-   ```
-3. Install [oxmysql](https://github.com/overextended/oxmysql) if you plan to swap the JSON storage for SQL; the included storage layer is JSON-based by default.
-4. Grant admins the `ranch.admin` ACE or add their identifiers in `shared/config.lua`.
-
-## Configuration Highlights (`resource/shared/config.lua`)
-
-The config has been expanded into an “omni-level” tuning surface touching every feature described in the PRD. Highlights include:
-
-- `Config.Admin`, `Config.IdentifierPriority`, `Config.Discord` — access control, identifier parsing, Discord role/webhook automation, and audit logging.
-- `Config.Storage.Files` — declarative map of every JSON persistence bucket (ranches, vegetation, animals, workforce, production, environment, economy, progression) with an auto-persist interval.
-- `Config.Ranches` — ranch limits, upgrade trees, decoration catalogs, maintenance costs, morale math, ledger defaults, and Discord role wage modifiers.
-- `Config.Environment` — season order/length, weather weights, hazard definitions, wildlife behaviors, soil fertility math, drought/flood modifiers, and ambient audio tracks.
-- `Config.Livestock` / `Config.Healthcare` — species stats, genetics tables, trust thresholds, breeding rules, disease/injury catalogs, and farrier tooling.
-- `Config.Workforce` — AI hand options, wage tables, accident odds, task definitions, morale/fatigue decay, and roster permissions.
-- `Config.ProductionChains`, `Config.Crops`, `Config.Economy` — end-to-end processing times, spoilage rates, storage capacities, dynamic pricing curves, contract boards, and auction controls.
-- `Config.Progression`, `Config.UI`, `Config.GodExtras` — XP thresholds, skill trees, achievement rewards, tutorial toggles, haunted/VR/Tebex extras, and voice command flags.
-
-Every section is documented with sensible defaults so you can rescale difficulty, monetization hooks, or thematic flavor from a single file.
-
-## Admin Commands
-
-All commands require the `ranch.admin` ACE or a whitelisted identifier and respect the config-driven rate limiter/audit log.
-
-| Command | Description |
-| --- | --- |
-| `/ranchcreate <name> [identifier]` | Create a deed with optional owner identifier (license:/cid:/citizenid:/discord:). |
-| `/ranchdelete <ranchId>` | Delete a ranch, remove zones/props, archive Discord roles if configured. |
-| `/ranchtransfer <ranchId> <identifier>` | Transfer ownership to another identifier; triggers Discord webhook + ledger history. |
-| `/ranchsetrole <ranchId> <discordRoleId>` | Attach a Discord role for external automation or Tebex perks. |
-| `/ranchseason <season>` | Force the global season (`spring`, `summer`, `autumn`, `winter`). |
-| `/ranchweather` | Roll a new weather pattern immediately. |
-| `/ranchhazard <hazardKey> [ranchId]` | Queue a hazard (lightning, flood, drought, blizzard, duststorm, etc.) optionally tied to a ranch history entry. |
-| `/ranchanimaladd <ranchId> <species> [count]` | Spawn and persist livestock for the ranch with full needs/genetics records. |
-| `/ranchanimaldel <ranchId> <animalId>` | Remove a specific animal from the ranch herd. |
-| `/ranchassign <ranchId> <identifier> <role>` | Assign a workforce role (Owner, Foreman, Hand, Wrangler, Dairyman, Butcher, Vet, Teamster). |
-| `/ranchtask <ranchId> <taskType>` | Post a configurable task board job (feeding, watering, mucking, milking, fenceRepair, herding). |
-| `/ranchcontract [town] [contractId] [ranchId]` | Without args generate a new contract, or assign an existing contract to a ranch. |
-| `/ranchxp <ranchId> <amount>` | Grant XP toward ranch level/skill unlocks. |
-| `/pzcreate [zoneId]` | Begin drawing a polygon zone with Left Alt (point), Enter (save), Backspace (cancel). |
-| `/pzsave` | Force-save the current zone in progress. |
-| `/pzcancel` | Abort the current zone creation session. |
-| `/ranchprop <model> [ranchId]` | Spawn a whitelisted prop with rotation/elevation controls. |
-| `/ranchpropdel [ranchId]` | Remove all stored props for the ranch. |
-
-Every command emits chat feedback plus server history entries so ownership, workforce, and economic changes remain auditable.
-
-## Data Events & Integrations
-
-- `ranch:zones:sync`, `ranch:vegetation:update`, `ranch:props:update` — authoritative land, vegetation, and prop payloads.
-- `ranch:environment:update`, `ranch:environment:notify` — global season/weather/hazard state and alert messages.
-- `ranch:livestock:update`, `ranch:livestock:trust`, `ranch:livestock:treated` — herd snapshots, trust deltas, and treatment logs.
-- `ranch:workforce:roster`, `ranch:workforce:tasks` — roster morale/fatigue data and active task boards.
-- `ranch:economy:update`, `ranch:economy:contracts`, `ranch:economy:sale` — price tables, contract boards, and ledger sale broadcasts.
-- `ranch:progression:update`, `ranch:progression:achievement` — XP/level updates and achievement unlocks.
-- `ranch:ownershipChanged` (server) — emitted after deed transfers for Discord role bots or Tebex fulfillment.
-
-Client exports now expose `GetRanchZones`, `GetVegetation`, `GetProps`, `GetEnvironment`, `GetLivestock`, `GetWorkforce`, `GetEconomy`, and `GetProgression` so UI layers, AI systems, or external scripts can access synced state.
-
-## Extending the Resource
-
-- Replace JSON storage with MySQL by rewriting `server/storage.lua` using `oxmysql` queries.
-- Connect the Discord webhook to a bot that grants/removes roles using `Config.Discord` metadata.
-- Attach vegetation data to environment controllers that modify grazing yield, wildlife density, or hazard frequency.
-- Build mapper UIs on top of `ranch:zones:updated` to preview polygons, or feed them into PolyZone definitions for collision checks.
+![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![RedM](https://img.shields.io/badge/RedM-Compatible-green.svg)
+![License](https://img.shields.io/badge/license-MIT-orange.svg)
 
 ---
 
-# Ranch System: Omni Frontier — Product Requirements Document
+## 📸 Screenshots
 
-## Product Vision
+<div align="center">
+  <img src="screenshots/dashboard.png" alt="Ranch Dashboard" width="800"/>
+  <p><em>Supreme-level dashboard with real-time ranch statistics and health monitoring</em></p>
+  
+  <img src="screenshots/livestock.png" alt="Livestock Management" width="800"/>
+  <p><em>Comprehensive livestock tracking with health, trust, and genetics</em></p>
+  
+  <img src="screenshots/environment.png" alt="Environment System" width="800"/>
+  <p><em>Dynamic seasons, weather patterns, and environmental hazards</em></p>
+  
+  <img src="screenshots/economy.png" alt="Economy & Ledger" width="800"/>
+  <p><em>Full economy system with market prices, contracts, and accounting</em></p>
+</div>
 
-Deliver a persistent, systemic ranch-management experience for RedM that simulates frontier ranch life across dynamic seasons, expansive land stewardship, deep animal husbandry, production chains, emergent events, and social/economic progression. The experience must be extensible, admin-friendly, and tightly integrated with community tooling such as Discord role management and mapping utilities.
+> **Note:** Screenshots show the supreme-level NUI interface designed specifically for RedM. All UI elements are fully responsive and optimized for gameplay.
 
-## Goals
+---
 
-1. **Living Frontier Ecology** — Seasonal, weather, soil, and wildlife systems that materially influence ranch planning, yields, and risks.
-2. **Ownership & Stewardship** — Acquire, expand, customize, and maintain ranch properties with meaningful upgrades, decay loops, and administrative governance.
-3. **Sentient Livestock** — Manage diverse animals with genetics, behavior memory, health systems, and immersive husbandry gameplay.
-4. **Professional Craft** — Support veterinary, farrier, processing, and workforce loops that reward mastery and cooperation.
-5. **Frontier Economy & Reputation** — Tie production chains into dynamic markets, law/crime consequences, and reputation-driven contracts.
-6. **Progression Legacy** — Provide long-term progression, achievements, and family legacy mechanics that keep ranches relevant across seasons.
+## ✨ Features Overview
 
-## Non-Goals
+### 🎮 Supreme-Level UI System
+- **Modern NUI Interface** - Beautiful, responsive UI built with HTML5/CSS3/JavaScript
+- **RedM Optimized** - Designed specifically for RedM with proper keybindings and controls
+- **Real-Time Updates** - Live data synchronization across all ranch systems
+- **Multiple Views** - Dashboard, Livestock, Workforce, Economy, Environment, and Admin tabs
+- **Theme** - Authentic western aesthetic with warm earth tones and period-appropriate styling
 
-- Recreating the full RDR2 single-player narrative.
-- Shipping VR, Tebex, haunted events, or voice command features at launch (target post-launch "God-Level" extras).
-- Delivering urban or city-based gameplay loops outside the ranch context.
+### 🐄 Livestock Management
+- **Multi-Species Support** - Horses, cattle, sheep, pigs, chickens, goats, and more
+- **Advanced Genetics** - Breeding system with bloodlines and trait inheritance
+- **Health & Trust** - Individual animal health, trust meters, and personality traits
+- **Lifecycle Simulation** - Birth, growth, aging, and natural lifecycle progression
+- **Medical System** - Disease tracking, injury treatment, and veterinary gameplay
 
-## Target Audience
+### 🌍 Environment & Ecology
+- **Dynamic Seasons** - Spring, Summer, Autumn, Winter with unique characteristics
+- **Weather System** - Clear, rain, storms, snow, fog with gameplay impacts
+- **Environmental Hazards** - Lightning, floods, droughts, blizzards, dust storms
+- **Soil & Vegetation** - Pasture quality, fertility tracking, and regrowth mechanics
+- **Wildlife Ecosystem** - Deer, wolves, coyotes, rodents with AI behaviors
 
-- RedM server owners seeking a deep, systemic ranch simulation.
-- Roleplay communities invested in co-op ranch life loops.
-- Systems-focused players who enjoy management, economy, and animal care gameplay.
+### 👥 Workforce System
+- **Flexible Roles** - Owner, Foreman, Hand, Wrangler, Dairyman, Butcher, Vet, Teamster
+- **Task Management** - Assign tasks, track completion, manage schedules
+- **Morale & Fatigue** - Worker satisfaction affects productivity
+- **Discord Integration** - Auto-sync roles with Discord for external management
+- **AI Workforce** - Optional AI workers for single-player ranch management
 
-## Experience Pillars
+### 💰 Economy & Trading
+- **Dynamic Pricing** - Market prices fluctuate based on season and demand
+- **Contract System** - Town boards with delivery contracts and deadlines
+- **Auction House** - Live bidding system for livestock and goods
+- **Ledger Tracking** - Complete accounting with income, expenses, and balance sheets
+- **Production Chains** - Dairy, meat processing, wool, eggs, and byproducts
 
-1. **Living Frontier Ecology** — Seasons, soil health, weather hazards, and wildlife interactions challenge planning.
-2. **Ownership & Stewardship** — Land deeds, upgrades, and maintenance reinforce ranch identity.
-3. **Sentient Livestock** — Genetics, behavior, needs, and trust systems humanize animals.
-4. **Professional Craft** — Minigames and tools simulate craftwork across ranch professions.
-5. **Frontier Economy & Reputation** — Contracts, auctions, law, and crime drive the marketplace.
-6. **Progression Legacy** — Skill trees, achievements, and heirs sustain multi-season play.
+### 🎯 Progression & Achievements
+- **XP System** - Gain experience through ranch activities
+- **Skill Trees** - Husbandry, Veterinary, Teamster, Wrangler, Butcher specializations
+- **Achievements** - Unlock rewards for milestones and accomplishments
+- **Legacy System** - Heir mechanics for multi-generation gameplay
 
-## Key Systems & Requirements
+### 🛠️ Administrative Tools
+- **Comprehensive Commands** - Full suite of admin commands for ranch management
+- **Zoning System** - PZCreate integration for defining ranch boundaries
+- **Prop Placement** - Mapper tools for decorating ranches with props
+- **Ownership Control** - Transfer, create, delete ranches with full audit logging
+- **Discord Webhooks** - Real-time notifications for ownership changes and events
 
-### Environment & Ecology
+---
 
-- **Dynamic Seasons** alter visuals, crop yields, and animal needs (e.g., snow loads pastures in winter, spring floods damage fencing).
-- **Soil & Grass Simulation** tracks pasture regrowth, overgrazing penalties, and fertility recovery via crop rotation or manure spreading.
-- **Weather Impacts** introduce drought milk penalties, blizzard feed spikes, storm-driven structure damage, and barn fire hazards.
-- **Environmental Hazards** such as floods drowning chickens, frost-killed crops, dust storms suffocating livestock unless sheltered.
-- **Wildlife Ecosystem** includes deer, wolves, coyotes, and rodents with AI behaviors interacting with ranch resources.
-- **Vegetation Modifier Tooling** provides an in-game vegetation/terrain brush ("veg modifier") compatible with PolyZone/PZCreate workflows to shape pastures, clear land, and mark regrowth states.
+## 🚀 Installation
 
-### Ranch Property, Land & Administration
+### Prerequisites
+- RedM server (latest version recommended)
+- Basic knowledge of RedM resource installation
+- (Optional) [oxmysql](https://github.com/overextended/oxmysql) for database storage
 
-- **Ranch Deeds & Ownership** — Courthouse-registered ranch names (e.g., "Circle T Ranch") with transferable deeds.
-- **Administrative Controls** — Server staff can assign, change, or delete ranch ownership via player identifiers (license, CitizenID/CID, Discord ID) and trigger ownership webhooks. Ownership transfers log to the ledger and Discord.
-- **Discord Role Synchronization** — Configurable mapping from ranch roles (Owner, Foreman, Hand, Wrangler, Dairyman, Butcher, Vet, Teamster) to Discord roles with auto-grant/revoke on promotion, termination, or ranch sale.
-- **Upgradeable Plots** — Expand land, merge parcels, buy/sell sections, create multi-acre empires subject to zoning constraints.
-- **PZCreate Zoning Integration** — Authoritative zoning tool that lets admins or mappers sketch pasture zones, hazard perimeters, and construction parcels. Zones feed map overlays, AI pathing bounds, and resource spawn tables.
-- **Building Upgrades** — Modular barns (capacity/cleanliness tiers), smokehouses, silos, windmills, wells, dairies, shearing sheds, chicken coops, pig pens, workshops, and veterinary clinics with decay timers.
-- **Decorations & Utilities** — Ranch signage, banners, flags, wagon decals, fencing styles, lighting, troughs, hay bales, bell towers, hitching posts, water towers, smoke stacks.
-- **Maintenance & Decay** — Structures degrade over time; repairs require tools/resources with optional minigame interactions.
-- **Usable Prop Registry** — Mapping prompt library that lists approved prop models and interactive states (sit, lean, inspect, harvest). Integrates with the zoning tool to auto-tag placeable props for AI navigation and player interactions.
+### Step-by-Step Installation
 
-### Livestock Lifecycle & Behavior
+1. **Download the Resource**
+   ```bash
+   cd resources
+   git clone https://github.com/iboss21/Ranch-System-Mega-Features.git
+   ```
 
-- **Species Modules** — Horses, cattle, sheep, goats, pigs, chickens, ducks, turkeys, dogs, cats, and exotic animals (alpaca, bees, rabbits) with species-specific needs and outputs.
-- **Genetics & Bloodlines** — Attributes for coat colors, milk yield, wool quality, meat marbling, temperament; inbreeding penalties and bloodline advantages.
-- **Animal Personalities & Memory** — Behavioral traits (stubborn bulls, timid cows) and trust meters that respond to player actions; mistreated horses refuse riding, spoiled dogs become extra loyal.
-- **Lifecycle Progression** — Calves → mature cattle → aging stock; seasonal cycles (e.g., chickens lay more in spring, pigs fatten before winter).
-- **Needs Simulation** — Hunger, thirst, cleanliness, stress, diseases, injuries, social bonds, temperature tolerance; support for manual or AI-managed care routines.
-- **Breeding System** — Courtship animations, gestation timers, birthing complications that trigger veterinary minigames.
-- **Nicknames & Branding** — Custom names, ear tags, and visible 3D text/branding marks.
+2. **Rename the Resource Folder**
+   ```bash
+   mv Ranch-System-Mega-Features/resource omni_ranch
+   ```
 
-### Health, Veterinary & Farrier Gameplay
+3. **Add to Server Configuration**
+   
+   Edit your `server.cfg` or `resources.cfg`:
+   ```cfg
+   ensure omni_ranch
+   ```
 
-- **Disease Catalog** — Hoof rot, colic, ticks, pox, parasites with diagnosis minigames and treatment plans.
-- **Injury Scenarios** — Wagon accidents, predator bites, broken legs, horn gouges requiring first aid, splints, or surgery.
-- **Medical Facilities** — Quarantine pens, surgery tables, med kits, recovery timers.
-- **Medications & Tools** — Salves, tonics, poultices, bandages, splints, vaccines, hoof picks, horseshoes.
-- **Shoeing System** — Minigame featuring nail placement, shoe type selection, and wear tracking.
+4. **Configure Permissions**
+   
+   Edit `omni_ranch/shared/config.lua` to add admin identifiers:
+   ```lua
+   Config.Admin = {
+       AcePermission = "ranch.admin",
+       Identifiers = {
+           ["license:your_license_here"] = true,
+       },
+       -- ... other settings
+   }
+   ```
 
-### Workforce & Daily Loops
+5. **Grant ACE Permissions (Alternative)**
+   
+   In your `server.cfg`:
+   ```cfg
+   add_ace group.admin ranch.admin allow
+   ```
 
-- **Ranch Hand System** — Player or AI workers assignable to feeding, watering, mucking, milking, fence repair, fieldwork, and scouting tasks.
-- **Roles & Grades** — Owner, Foreman, Hand, Wrangler, Dairyman, Butcher, Vet, Teamster; permissions controlled via admin console and reflected in Discord roles.
-- **Task Boards** — Job postings with wages, rewards, cooldowns, XP, and accident risk modifiers.
-- **Daily Routines** — Brush horses, muck stalls, feed chickens, check fences, herd cattle, inspect vegetation regrowth.
-- **Worker Accidents & Morale** — AI and players can suffer injuries (trampled, kicked); morale affects efficiency; must manage pay, rest, and amenities.
+6. **Start Your Server**
+   ```bash
+   # Start or restart your RedM server
+   ```
 
-### Production & Processing Chains
+7. **Verify Installation**
+   - Join your server
+   - Press `F5` to open the Ranch UI (default keybind)
+   - Check console for `[RanchUI] Ranch UI Client loaded successfully`
 
-- **Dairy Processing** — Milking cows/goats, churning butter, aging cheese with humidity controls.
-- **Meat Processing** — Butchering minigame for prime cuts vs spoiled meat; carcass breakdown into steaks, roasts, sausages.
-- **Egg & Poultry** — Incubators, brooding hens, chick growth, egg grading.
-- **Wool & Fiber** — Shearing, washing, carding, dyeing to produce yarn and cloth.
-- **Byproducts** — Manure for fertilizer, bones for tools, hides to leather, feathers for fletching.
-- **Smoking & Curing** — Smokehouses for jerky, bacon, hams; brine vats for sausages.
-- **Crop Cultivation** — Forage crops (corn, oats, clover, sorghum, alfalfa), irrigation, pest management, and storage spoilage (silos, hay bales with rat risk if untarped).
+---
 
-### Law, Crime & Reputation
+## 🎮 Usage Guide
 
-- **Rustling Mechanics** — Fence cutting, cattle theft, illegal re-branding; evidence supports sheriff investigations and bounty missions.
-- **Insurance System** — Premiums with partial payouts for predator raids or natural disasters.
-- **Reputation Tracks** — "Honest Rancher," "Rustler Suspect," "Cattle King" affecting contracts and pricing.
-- **Bandits & Predators** — Wolves, cougars, coyotes, bears, and NPC rustler gangs; defensive structures and alert systems.
-- **Event Framework** — Blizzards, tornadoes, locust swarms, barn fires, droughts, rodeos, county fairs, harvest festivals, ranch dances, competitions (best bull, best wool, fastest horse).
+### Opening the Ranch UI
 
-### Horses & Wagons
+**Method 1: Keybind**
+- Press `F5` (default) to open the Ranch UI
+- Press `ESC` to close
 
-- **Training System** — Groundwork, riding, pulling, obstacle training that unlocks rears, skids, stamina boosts, calmer behavior.
-- **Temperament & Bonding** — Calm, fiery, stubborn, bold archetypes with bonding levels affecting control.
-- **Stud & Auction House** — Breeding services, stud fees, bloodline charts, auction UI with live bidding and Discord announcements.
-- **Tack Wear & Maintenance** — Saddles, bridles, horseshoes degrade; repairs require materials or farrier visits.
-- **Draft Teams & Logistics** — Hitch 2–4 horses to wagons with performance tied to training and temperament.
-- **Wagon Types** — Hay, milk, meat, and tool wagons with load simulations and handling penalties; breakdowns (axles, wheels) needing repair kits.
-- **Railroad Integration** — Load cattle into train cars for bulk sales with scheduling mechanics.
+**Method 2: Command**
+```
+/ranchui [ranchId]
+```
 
-### Economy, Contracts & Ledger
+### Admin Commands
 
-- **Dynamic Pricing** — Seasonal and regional demand curves (e.g., beef peaks in winter, wool in spring).
-- **Contracts & Auctions** — Town board contracts with timers; auction house with reserve prices, fraud detection, and Discord bidding broadcasts.
-- **Market Reputation** — Selling spoiled goods lowers trust; consistent quality unlocks premium contracts.
-- **Ledger & Accounting** — Track expenses, upkeep, wages, income, debts, insurance claims, ownership transfers.
+All commands require the `ranch.admin` ACE permission or whitelisted identifier.
 
-*(The remainder of the PRD continues unchanged from the prior version and is available for reference in this file.)*
+#### Ranch Management
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/ranchcreate <name> [identifier]` | Create a new ranch | `/ranchcreate "Circle T Ranch" license:abc123` |
+| `/ranchdelete <ranchId>` | Delete a ranch | `/ranchdelete ranch_001` |
+| `/ranchtransfer <ranchId> <identifier>` | Transfer ownership | `/ranchtransfer ranch_001 citizenid:JD001` |
+| `/ranchsetrole <ranchId> <discordRoleId>` | Link Discord role | `/ranchsetrole ranch_001 1234567890` |
+
+#### Environment Control
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/ranchseason <season>` | Set global season | `/ranchseason spring` |
+| `/ranchweather` | Roll new weather | `/ranchweather` |
+| `/ranchhazard <hazardKey> [ranchId]` | Trigger hazard | `/ranchhazard lightning ranch_001` |
+
+#### Livestock Management
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/ranchanimaladd <ranchId> <species> [count]` | Add animals | `/ranchanimaladd ranch_001 cattle 10` |
+| `/ranchanimaldel <ranchId> <animalId>` | Remove animal | `/ranchanimaldel ranch_001 animal_123` |
+
+#### Workforce & Economy
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/ranchassign <ranchId> <identifier> <role>` | Assign worker | `/ranchassign ranch_001 license:abc Hand` |
+| `/ranchtask <ranchId> <taskType>` | Post task | `/ranchtask ranch_001 feeding` |
+| `/ranchcontract [town] [contractId] [ranchId]` | Manage contracts | `/ranchcontract Valentine` |
+| `/ranchxp <ranchId> <amount>` | Grant XP | `/ranchxp ranch_001 100` |
+
+#### Mapping & Zoning
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/pzcreate [zoneId]` | Create polygon zone | `/pzcreate pasture_01` |
+| `/pzsave` | Save zone | `/pzsave` |
+| `/pzcancel` | Cancel zone creation | `/pzcancel` |
+| `/ranchprop <model> [ranchId]` | Spawn prop | `/ranchprop p_haybale02x ranch_001` |
+| `/ranchpropdel [ranchId]` | Remove props | `/ranchpropdel ranch_001` |
+
+### Available Seasons
+- `spring` - Increased crop growth, higher precipitation
+- `summer` - Hot and dry, drought risk
+- `autumn` - Harvest bonuses, rutting season
+- `winter` - Cold weather, increased feed demand
+
+### Available Hazards
+- `lightning` - Fire risk, barn damage
+- `flood` - Livestock danger, crop damage
+- `drought` - Reduced pasture quality, water stress
+- `blizzard` - Extreme cold, structural damage
+- `duststorm` - Suffocation risk, building wear
+
+### Worker Roles
+- `Owner` - Full permissions
+- `Foreman` - Task assignment, hiring, upgrades
+- `Hand` - Basic tasks
+- `Wrangler` - Horse handling, cattle moving
+- `Dairyman` - Dairy processing
+- `Butcher` - Meat processing
+- `Vet` - Animal treatment and diagnosis
+- `Teamster` - Wagon operations, deliveries
+
+
+---
+
+## ⚙️ Configuration
+
+The system is highly configurable through `shared/config.lua`. Key sections:
+
+### UI Configuration
+```lua
+Config.UI = {
+    EnableLedgerApp = true,
+    MapOverlay = true,
+    StatusIcons = true,
+    PhotoCatalog = true,
+    AuctionUI = true,
+    DiscordWebhooks = true,
+    VoiceCommands = {
+        enable = true,
+        whistleDog = true,
+        callCattle = true
+    }
+}
+```
+
+### Environment Settings
+```lua
+Config.Environment = {
+    SeasonLengthMinutes = 120,  -- How long each season lasts
+    SeasonSequence = { "spring", "summer", "autumn", "winter" },
+    -- Weather patterns, hazards, wildlife, soil, water...
+}
+```
+
+### Economy Settings
+```lua
+Config.Economy = {
+    DynamicPricing = {
+        baseDemand = { beef = 1.0, milk = 1.0, wool = 1.0 },
+        seasonalModifiers = {
+            winter = { beef = 1.3, milk = 1.1 }
+        }
+    },
+    Contracts = {
+        maxActive = 5,
+        townBoards = { "Valentine", "Rhodes", "Blackwater" }
+    }
+}
+```
+
+### Livestock Configuration
+```lua
+Config.Livestock = {
+    cattle = {
+        needsDecayPerHour = { hunger = 0.15, thirst = 0.2 },
+        breedingCooldownDays = 60,
+        gestationDays = 9
+    }
+    -- ... more species settings
+}
+```
+
+For complete configuration options, see `shared/config.lua`.
+
+---
+
+## 🔧 Customization
+
+### Changing UI Keybind
+
+Edit `client/ui.lua`:
+```lua
+RegisterKeyMapping('ranchui', 'Open Ranch UI', 'keyboard', 'F5')  -- Change F5 to your preferred key
+```
+
+### Customizing UI Colors
+
+Edit `html/css/style.css`:
+```css
+:root {
+    --primary-bg: rgba(20, 15, 10, 0.95);
+    --accent-color: #d4a574;  -- Change to your preferred color
+    /* ... */
+}
+```
+
+### Adding Custom Livestock Species
+
+Edit `shared/config.lua`:
+```lua
+Config.Livestock.yourspecies = {
+    needsDecayPerHour = { hunger = 0.1, thirst = 0.15 },
+    breedingCooldownDays = 30,
+    -- ... your settings
+}
+```
+
+### Discord Webhook Integration
+
+Configure in `shared/config.lua`:
+```lua
+Config.Discord = {
+    WebhookUrl = "your_webhook_url_here",
+    AlertChannelId = "channel_id",
+    TransferRoleOnSale = true
+}
+```
+
+---
+
+## 📊 Data Storage
+
+By default, the system uses JSON file storage:
+
+- `data/ranches.json` - Ranch ownership and metadata
+- `data/animals.json` - Livestock registry
+- `data/workforce.json` - Worker rosters
+- `data/economy.json` - Market prices and contracts
+- `data/environment.json` - Season and weather state
+- `data/progression.json` - XP and achievements
+- `data/production.json` - Processing chains
+- `data/vegetation.json` - Pasture and vegetation data
+
+### Migrating to MySQL
+
+To use MySQL instead of JSON:
+
+1. Install [oxmysql](https://github.com/overextended/oxmysql)
+2. Edit `server/storage.lua`
+3. Replace JSON read/write functions with SQL queries
+4. Create database tables based on JSON structure
+
+---
+
+## 🎯 Events & Exports
+
+### Client Events
+
+**Listening Events:**
+- `ranch:zones:sync` - Zone data synchronized
+- `ranch:livestock:updated` - Livestock data updated
+- `ranch:workforce:rosterUpdated` - Workforce roster changed
+- `ranch:economy:updated` - Economy data refreshed
+- `ranch:environment:updated` - Environment state changed
+- `ranch:progression:updated` - Progression data updated
+
+**Triggerable Events:**
+- `ranch:ui:addActivity` - Add activity to feed
+- `ranch:ui:notify` - Show notification
+
+### Client Exports
+
+```lua
+-- Open Ranch UI
+exports['omni_ranch']:OpenRanchUI(ranchId)
+
+-- Close Ranch UI
+exports['omni_ranch']:CloseRanchUI()
+
+-- Check if UI is open
+local isOpen = exports['omni_ranch']:IsUIOpen()
+
+-- Get ranch data
+local zones = exports['omni_ranch']:GetRanchZones()
+local livestock = exports['omni_ranch']:GetLivestock()
+local workforce = exports['omni_ranch']:GetWorkforce()
+local economy = exports['omni_ranch']:GetEconomy()
+local environment = exports['omni_ranch']:GetEnvironment()
+local progression = exports['omni_ranch']:GetProgression()
+```
+
+### Server Events
+
+**Triggerable Events:**
+- `ranch:ownershipChanged` - Emitted after deed transfers
+- Server-side events match data sync patterns
+
+---
+
+## 🐛 Troubleshooting
+
+### UI Not Opening
+
+**Problem:** Pressing F5 does nothing
+
+**Solutions:**
+1. Check console for errors: `[RanchUI] Ranch UI Client loaded successfully`
+2. Verify resource is running: `/ensure omni_ranch`
+3. Check fxmanifest.lua includes all files
+4. Clear cache and restart
+
+### NUI Focus Issues
+
+**Problem:** Can't click UI elements or can't close UI
+
+**Solutions:**
+1. Press `ESC` multiple times
+2. Use `/ranchui` command to toggle
+3. Check browser console (F12) for JavaScript errors
+4. Restart resource: `/restart omni_ranch`
+
+### Missing Data in UI
+
+**Problem:** Livestock/workforce shows "Loading..."
+
+**Solutions:**
+1. Ensure you have ranch data (create ranch first)
+2. Check server console for data sync errors
+3. Verify JSON files exist in `data/` folder
+4. Check file permissions on JSON files
+
+### Permission Denied
+
+**Problem:** Admin commands don't work
+
+**Solutions:**
+1. Add your license to `Config.Admin.Identifiers`
+2. Or grant ACE: `add_ace group.admin ranch.admin allow`
+3. Restart server after config changes
+4. Check identifier format (license:, citizenid:, discord:, etc.)
+
+### UI Display Issues
+
+**Problem:** UI looks broken or misaligned
+
+**Solutions:**
+1. Clear browser cache: `/resmon` and check NUI memory
+2. Check console for CSS loading errors
+3. Verify all HTML/CSS/JS files are in correct locations
+4. Test with different screen resolution
+
+---
+
+## 🤝 Integration with Other Resources
+
+### Framework Compatibility
+
+This resource is framework-agnostic by default but can integrate with:
+
+- **RedM Reborn** - Use `GetPlayerData()` for character info
+- **RedEM:RP** - Integrate with job system
+- **VORP** - Connect to VORP character and inventory
+- **QBCore RedM** - Use QBCore player functions
+
+### Example Integration (VORP)
+
+```lua
+-- In client/ui.lua, modify openRanchUI():
+local VORPcore = {}
+TriggerEvent("getCore", function(core)
+    VORPcore = core
+end)
+
+local User = VORPcore.getUser()
+local Character = User.getUsedCharacter
+ranchData.ranchName = Character.firstname .. "'s Ranch"
+```
+
+---
+
+## 📝 Roadmap & Future Features
+
+### Planned Features
+- ✅ Supreme-level NUI interface (COMPLETED)
+- ✅ Full livestock management (COMPLETED)
+- ✅ Dynamic environment system (COMPLETED)
+- ✅ Economy and contracts (COMPLETED)
+- ✅ Comprehensive documentation (COMPLETED)
+- 🔲 MySQL migration tools
+- 🔲 Advanced genetics visualization
+- 🔲 Mobile companion app
+- 🔲 VR mode support (experimental)
+- 🔲 Multiplayer ranch co-op
+- 🔲 Ranch PvP competitions
+- 🔲 Seasonal events and festivals
+
+### Community Suggestions
+We welcome feature requests! Open an issue on GitHub to suggest improvements.
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License. See LICENSE file for details.
+
+---
+
+## 🙏 Credits
+
+**Development Team:**
+- Omni Frontier Dev Team - Core development
+- iboss21 - Project maintainer
+- Community Contributors - Bug reports and suggestions
+
+**Special Thanks:**
+- RedM community for framework support
+- CFX.re for the platform
+- All beta testers and early adopters
+
+---
+
+## 📞 Support
+
+**Documentation:** You're reading it!  
+**Issues:** [GitHub Issues](https://github.com/iboss21/Ranch-System-Mega-Features/issues)  
+**Discord:** Join our community (link in repository)  
+
+---
+
+## 🌟 Show Your Support
+
+If you find this resource useful:
+- ⭐ Star the repository on GitHub
+- 🐛 Report bugs and suggest features
+- 💬 Share with other RedM server owners
+- 📝 Write a review or showcase your ranch
+
+---
+
+<div align="center">
+  
+### Built with ❤️ for the RedM Community
+
+**Transform your server. Embrace the frontier. Build your ranch empire.**
+
+</div>
