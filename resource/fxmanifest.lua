@@ -18,7 +18,8 @@ client_scripts {
     'client/main.lua',
     'client/zoning.lua',
     'client/vegetation.lua',
-    'client/props.lua'
+    'client/props.lua',
+    'client/ui.lua'
 }
 
 server_scripts {
@@ -33,8 +34,13 @@ server_scripts {
 }
 
 files {
-    'data/*.json'
+    'data/*.json',
+    'html/index.html',
+    'html/css/style.css',
+    'html/js/app.js'
 }
+
+ui_page 'html/index.html'
 
 provides {
     'ranch-system-omni'

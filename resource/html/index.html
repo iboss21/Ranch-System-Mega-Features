@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranch System - Omni Frontier</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="ranch-ui" id="ranchUI" style="display: none;">
+        <!-- Header Bar -->
+        <div class="header-bar">
+            <div class="ranch-title">
+                <i class="fas fa-horse-head"></i>
+                <span id="ranchName">Circle T Ranch</span>
+            </div>
+            <div class="season-weather">
+                <span class="season" id="currentSeason">
+                    <i class="fas fa-leaf"></i> Spring
+                </span>
+                <span class="weather" id="currentWeather">
+                    <i class="fas fa-sun"></i> Clear
+                </span>
+            </div>
+            <button class="close-btn" onclick="closeUI()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="showTab('dashboard')">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <button class="tab-btn" onclick="showTab('livestock')">
+                <i class="fas fa-cow"></i> Livestock
+            </button>
+            <button class="tab-btn" onclick="showTab('workforce')">
+                <i class="fas fa-users"></i> Workforce
+            </button>
+            <button class="tab-btn" onclick="showTab('economy')">
+                <i class="fas fa-coins"></i> Economy
+            </button>
+            <button class="tab-btn" onclick="showTab('environment')">
+                <i class="fas fa-tree"></i> Environment
+            </button>
+            <button class="tab-btn" onclick="showTab('admin')">
+                <i class="fas fa-cog"></i> Admin
+            </button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div class="tab-content active" id="dashboard">
+            <div class="dashboard-grid">
+                <!-- Quick Stats -->
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-cow"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Animals</span>
+                        <span class="stat-value" id="totalAnimals">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Workers</span>
+                        <span class="stat-value" id="totalWorkers">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Balance</span>
+                        <span class="stat-value" id="ranchBalance">$0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Ranch Level</span>
+                        <span class="stat-value" id="ranchLevel">1</span>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="activity-panel">
+                    <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                    <div class="activity-list" id="activityList">
+                        <div class="activity-item">
+                            <span class="activity-time">5 min ago</span>
+                            <span class="activity-text">Ranch system initialized</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ranch Health -->
+                <div class="health-panel">
+                    <h3><i class="fas fa-heartbeat"></i> Ranch Health</h3>
+                    <div class="health-bars">
+                        <div class="health-item">
+                            <label>Cleanliness</label>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="cleanlinessBar" style="width: 75%"></div>
+                            </div>
+                            <span class="health-value" id="cleanlinessValue">75%</span>
+                        </div>
+                        <div class="health-item">
+                            <label>Morale</label>
+                            <div class="progress-bar">
+                                <div class="progress-fill morale" id="moraleBar" style="width: 80%"></div>
+                            </div>
+                            <span class="health-value" id="moraleValue">80%</span>
+                        </div>
+                        <div class="health-item">
+                            <label>Integrity</label>
+                            <div class="progress-bar">
+                                <div class="progress-fill integrity" id="integrityBar" style="width: 90%"></div>
+                            </div>
+                            <span class="health-value" id="integrityValue">90%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Livestock Tab -->
+        <div class="tab-content" id="livestock">
+            <div class="livestock-controls">
+                <input type="text" class="search-input" placeholder="Search animals..." id="livestockSearch">
+                <select class="filter-select" id="speciesFilter">
+                    <option value="all">All Species</option>
+                    <option value="horse">Horses</option>
+                    <option value="cattle">Cattle</option>
+                    <option value="sheep">Sheep</option>
+                    <option value="pig">Pigs</option>
+                    <option value="chicken">Chickens</option>
+                </select>
+            </div>
+            <div class="livestock-grid" id="livestockGrid">
+                <!-- Livestock cards will be populated dynamically -->
+                <div class="livestock-card">
+                    <div class="animal-icon">
+                        <i class="fas fa-horse"></i>
+                    </div>
+                    <h4>Loading animals...</h4>
+                    <p>Please wait while we fetch your livestock data.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workforce Tab -->
+        <div class="tab-content" id="workforce">
+            <div class="workforce-header">
+                <h3><i class="fas fa-users"></i> Ranch Workforce</h3>
+                <button class="btn-primary" onclick="showHireDialog()">
+                    <i class="fas fa-user-plus"></i> Hire Worker
+                </button>
+            </div>
+            <div class="workforce-list" id="workforceList">
+                <!-- Workforce entries will be populated dynamically -->
+                <div class="worker-card">
+                    <div class="worker-info">
+                        <i class="fas fa-user"></i>
+                        <span>Loading workforce data...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="task-board">
+                <h3><i class="fas fa-tasks"></i> Task Board</h3>
+                <div class="task-list" id="taskList">
+                    <!-- Tasks will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Economy Tab -->
+        <div class="tab-content" id="economy">
+            <div class="economy-grid">
+                <div class="ledger-panel">
+                    <h3><i class="fas fa-book"></i> Ledger</h3>
+                    <div class="ledger-summary">
+                        <div class="ledger-item">
+                            <span>Total Income:</span>
+                            <span class="positive" id="totalIncome">$0</span>
+                        </div>
+                        <div class="ledger-item">
+                            <span>Total Expenses:</span>
+                            <span class="negative" id="totalExpenses">$0</span>
+                        </div>
+                        <div class="ledger-item total">
+                            <span>Net Balance:</span>
+                            <span id="netBalance">$0</span>
+                        </div>
+                    </div>
+                    <div class="ledger-transactions" id="ledgerTransactions">
+                        <!-- Transaction history -->
+                    </div>
+                </div>
+                <div class="market-panel">
+                    <h3><i class="fas fa-chart-bar"></i> Market Prices</h3>
+                    <div class="market-list" id="marketPrices">
+                        <!-- Market prices will be populated dynamically -->
+                    </div>
+                </div>
+                <div class="contracts-panel">
+                    <h3><i class="fas fa-file-contract"></i> Active Contracts</h3>
+                    <div class="contracts-list" id="contractsList">
+                        <!-- Contracts will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Environment Tab -->
+        <div class="tab-content" id="environment">
+            <div class="environment-grid">
+                <div class="season-panel">
+                    <h3><i class="fas fa-calendar-alt"></i> Season Info</h3>
+                    <div class="season-display">
+                        <div class="season-icon-large" id="seasonIcon">
+                            <i class="fas fa-leaf"></i>
+                        </div>
+                        <div class="season-details">
+                            <h2 id="seasonName">Spring</h2>
+                            <p id="seasonDescription">Grass is growing, animals are active</p>
+                            <div class="season-effects" id="seasonEffects">
+                                <span class="effect-badge positive">+15% Crop Growth</span>
+                                <span class="effect-badge">+25% Pasture Regrowth</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="weather-panel">
+                    <h3><i class="fas fa-cloud-sun"></i> Current Weather</h3>
+                    <div class="weather-display" id="weatherDisplay">
+                        <i class="fas fa-sun weather-icon-large"></i>
+                        <p class="weather-type">Clear Skies</p>
+                        <p class="temperature">72°F</p>
+                    </div>
+                </div>
+                <div class="hazards-panel">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Active Hazards</h3>
+                    <div class="hazards-list" id="hazardsList">
+                        <p class="no-hazards">No active hazards</p>
+                    </div>
+                </div>
+                <div class="vegetation-panel">
+                    <h3><i class="fas fa-seedling"></i> Vegetation Status</h3>
+                    <div class="vegetation-stats" id="vegetationStats">
+                        <div class="veg-stat">
+                            <label>Pasture Quality</label>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 85%"></div>
+                            </div>
+                        </div>
+                        <div class="veg-stat">
+                            <label>Soil Fertility</label>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 70%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Tab -->
+        <div class="tab-content" id="admin">
+            <div class="admin-panel">
+                <h3><i class="fas fa-tools"></i> Administrative Controls</h3>
+                <div class="admin-actions">
+                    <button class="admin-btn" onclick="adminAction('createRanch')">
+                        <i class="fas fa-plus-circle"></i> Create Ranch
+                    </button>
+                    <button class="admin-btn" onclick="adminAction('transferOwnership')">
+                        <i class="fas fa-exchange-alt"></i> Transfer Ownership
+                    </button>
+                    <button class="admin-btn" onclick="adminAction('setSeason')">
+                        <i class="fas fa-calendar"></i> Set Season
+                    </button>
+                    <button class="admin-btn" onclick="adminAction('triggerHazard')">
+                        <i class="fas fa-exclamation-triangle"></i> Trigger Hazard
+                    </button>
+                    <button class="admin-btn" onclick="adminAction('addAnimal')">
+                        <i class="fas fa-horse"></i> Add Animal
+                    </button>
+                    <button class="admin-btn" onclick="adminAction('grantXP')">
+                        <i class="fas fa-star"></i> Grant XP
+                    </button>
+                </div>
+                <div class="admin-logs">
+                    <h4><i class="fas fa-clipboard-list"></i> Admin Logs</h4>
+                    <div class="log-list" id="adminLogs">
+                        <!-- Logs will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
