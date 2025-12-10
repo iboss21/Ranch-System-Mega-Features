@@ -3,8 +3,14 @@ local Utils = require("shared.utils")
 local Storage = require("server.storage")
 
 local RanchManager = {}
-RanchManager.Ranches = Storage.Ranches:Get()
-RanchManager.Vegetation = Storage.Vegetation:Get()
+RanchManager.Ranches = Storage.Ranches:Get() or {}
+RanchManager.Vegetation = Storage.Vegetation:Get() or {}
+
+local function hydrateMetadata(existing)
+    local defaults = Utils.DeepCopy(Config.Ranches.DefaultMetadata or {})
+    if not existing then return defaults end
+    return Utils.TableMerge(defaults, existing)
+end
 
 local function ensureRanch(id)
     if not RanchManager.Ranches[id] then
@@ -15,10 +21,14 @@ local function ensureRanch(id)
             members = {},
             parcels = {},
             props = {},
-            metadata = {},
+            metadata = hydrateMetadata(nil),
             discordRoleId = nil,
-            createdAt = Utils.Timestamp()
+            createdAt = Utils.Timestamp(),
+            history = {},
+            achievements = {}
         }
+    else
+        RanchManager.Ranches[id].metadata = hydrateMetadata(RanchManager.Ranches[id].metadata)
     end
     return RanchManager.Ranches[id]
 end
@@ -37,7 +47,7 @@ function RanchManager.CreateRanch(name, ownerIdentifier, metadata)
     local ranch = ensureRanch(id)
     ranch.name = name
     ranch.owner = ownerIdentifier
-    ranch.metadata = metadata or {}
+    ranch.metadata = hydrateMetadata(metadata)
     RanchManager.Ranches[id] = ranch
     save()
     return ranch
@@ -67,6 +77,53 @@ function RanchManager.SetDiscordRole(id, roleId)
     ranch.discordRoleId = roleId
     save()
     return true, ranch
+end
+
+function RanchManager.UpdateMetadata(id, path, value)
+    local ranch = ensureRanch(id)
+    local node = ranch.metadata
+    local parts = {}
+    for segment in string.gmatch(path, "[^%.]+") do
+        table.insert(parts, segment)
+    end
+    for i = 1, #parts - 1 do
+        local key = parts[i]
+        node[key] = node[key] or {}
+        node = node[key]
+    end
+    node[parts[#parts]] = value
+    save()
+    return ranch
+end
+
+function RanchManager.AppendHistory(id, entry)
+    local ranch = ensureRanch(id)
+    ranch.history = ranch.history or {}
+    entry.timestamp = entry.timestamp or Utils.Timestamp()
+    table.insert(ranch.history, entry)
+    if #ranch.history > 200 then
+        table.remove(ranch.history, 1)
+    end
+    save()
+    return ranch.history
+end
+
+function RanchManager.RecordAchievement(id, key)
+    local ranch = ensureRanch(id)
+    ranch.achievements = ranch.achievements or {}
+    ranch.achievements[key] = Utils.Timestamp()
+    save()
+    return ranch.achievements
+end
+
+function RanchManager.AdjustLedger(id, delta, reason)
+    local ranch = ensureRanch(id)
+    ranch.metadata = ranch.metadata or hydrateMetadata()
+    ranch.metadata.ledger = ranch.metadata.ledger or {}
+    ranch.metadata.ledger.balance = (ranch.metadata.ledger.balance or 0) + delta
+    ranch.metadata.ledger.lastTransaction = { amount = delta, reason = reason, at = Utils.Timestamp() }
+    save()
+    return ranch.metadata.ledger.balance
 end
 
 function RanchManager.GetOrCreate(id)
@@ -127,6 +184,17 @@ end
 
 function RanchManager.AllZones()
     return RanchManager.Vegetation
+end
+
+function RanchManager.SyncAll(source)
+    local target = source or -1
+    for id, data in pairs(RanchManager.Ranches) do
+        TriggerClientEvent("ranch:zones:sync", target, id, data.parcels or {})
+        if data.props then
+            TriggerClientEvent("ranch:props:update", target, id, data.props)
+        end
+    end
+    TriggerClientEvent("ranch:vegetation:bulk", target, RanchManager.Vegetation)
 end
 
 -- Discord bridging (placeholder HTTP integration)

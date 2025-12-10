@@ -24,6 +24,11 @@ client_scripts {
 server_scripts {
     'server/storage.lua',
     'server/ranch_manager.lua',
+    'server/environment.lua',
+    'server/livestock.lua',
+    'server/workforce.lua',
+    'server/economy.lua',
+    'server/progression.lua',
     'server/admin.lua'
 }
 
